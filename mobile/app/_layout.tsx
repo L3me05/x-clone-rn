@@ -1,29 +1,36 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
+import "../global.css";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+function RootLayoutNav() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const inTabsGroup = segments[0] === '(tabs)';
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (isSignedIn && !inTabsGroup) {
+      // Utente autenticato -> vai alle tabs (home)
+      router.replace('/(tabs)');
+    } else if (!isSignedIn && !inAuthGroup) {
+      // Utente non autenticato -> vai al login
+      router.replace('/(auth)');
+    }
+  }, [isSignedIn, segments, isLoaded, router]);
+
+  return <Slot />;
+}
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <ClerkProvider tokenCache={tokenCache}>
+      <RootLayoutNav />
+    </ClerkProvider>
   );
 }
